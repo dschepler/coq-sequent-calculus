@@ -85,7 +85,7 @@ intros. revert Gamma2 H. induction H0; intros.
   - left. reflexivity.
   - apply Forall_impl with (2 := H). intros. right. assumption.
 + apply (ND_modus_ponens (P := P)); auto.
-+ apply ND_assumption. SearchAbout Forall. rewrite Forall_forall in H0. auto.
++ apply ND_assumption. rewrite Forall_forall in H0. auto.
 + apply (ND_sequence (P := P)); auto.
   apply IHND_proves2. constructor.
   - left. reflexivity.
