@@ -108,43 +108,18 @@ Inductive subterm : prop -> prop -> Prop :=
 | subterm_impl_l {P Q} : subterm P (P ⊃ Q)
 | subterm_impl_r {P Q} : subterm Q (P ⊃ Q).
 
-Lemma SC_admits_cut_ind_scheme : forall A :
-  (prop -> list prop -> prop -> Prop),
-  let subterm_case P := forall P', subterm P' P ->
-    forall Γ' Q, Γ' ⇒ Q -> A P' Γ' Q in
-  (forall P, subterm_case P -> forall Γ' Q, In Q Γ' -> A P Γ' Q) ->
-  (forall P, subterm_case P -> forall Γ' Q, In ⊥ Γ' -> A P Γ' Q) ->
-  (forall P, subterm_case P -> forall Γ', A P Γ' ⊤) ->
-  (forall P, subterm_case P -> forall Γ' P0 Q, Γ' ⇒ P0 -> A P Γ' P0 ->
-    Γ' ⇒ Q -> A P Γ' Q -> A P Γ' (P0 ∧ Q)) ->
-  (forall P, subterm_case P -> forall Γ' P0 Q R,
-    In (P0 ∧ Q) Γ' -> P0 :: Q :: Γ' ⇒ R ->
-    A P (P0 :: Q :: Γ') R -> A P Γ' R) ->
-  (forall P, subterm_case P -> forall Γ' P0 Q, Γ' ⇒ P0 -> A P Γ' P0 ->
-    A P Γ' (P0 ∨ Q)) ->
-  (forall P, subterm_case P -> forall Γ' P0 Q, Γ' ⇒ Q -> A P Γ' Q ->
-    A P Γ' (P0 ∨ Q)) ->
-  (forall P, subterm_case P -> forall Γ' P0 Q R, In (P0 ∨ Q) Γ' ->
-    P0 :: Γ' ⇒ R -> A P (P0 :: Γ') R -> Q :: Γ' ⇒ R ->
-    A P (Q :: Γ') R -> A P Γ' R) ->
-  (forall P, subterm_case P -> forall Γ' P0 Q, P0 :: Γ' ⇒ Q ->
-    A P (P0 :: Γ') Q -> A P Γ' (P0 ⊃ Q)) ->
-  (forall P, subterm_case P -> forall Γ' P0 Q R, In (P0 ⊃ Q) Γ' ->
-    Γ' ⇒ P0 -> A P Γ' P0 -> Q :: Γ' ⇒ R -> A P (Q :: Γ') R ->
-    A P Γ' R) ->
-  forall P Γ' Q, Γ' ⇒ Q -> A P Γ' Q.
+Lemma subterm_ind_scheme : forall (A : prop -> Prop),
+  (forall P (IHP : forall P', subterm P' P -> A P'), A P) ->
+  forall P, A P.
 Proof.
-induction P; (induction 1;
-  [ apply H | apply H0 | apply H1 | apply H2 | eapply H3 |
-    apply H4 | apply H5 | eapply H6 | apply H7 | eapply H8 ]); eauto.
-all: intros P' Hsubterm; inversion Hsubterm; auto.
+intros A F; induction P; apply F; inversion 1; auto.
 Qed.
 
 Lemma SC_admits_cut_ext : forall P Q Γ Γ',
   Γ ⇒ P -> Γ' ⊆ P :: Γ -> Γ' ⇒ Q -> Γ ⇒ Q.
 Proof.
-intros. revert P Γ' Q H1 Γ H H0.
-refine (SC_admits_cut_ind_scheme _ _ _ _ _ _ _ _ _ _ _); intros.
+induction P using subterm_ind_scheme. intros.
+revert Γ H H0; induction H1; intros.
 all: try match goal with
      | H : In _ ?Γ, H1 : ?Γ ⊆ _ |- _ => pose proof (H1 _ H)
      end.
@@ -154,109 +129,108 @@ all: repeat match goal with
 all: subst.
 + assumption.
 + apply SC_init; assumption.
-+ remember ⊥ as R. induction H1; try discriminate; subst.
++ remember ⊥ as R. induction H0; try discriminate; subst.
   - apply SC_bot_elim; assumption.
   - apply SC_bot_elim; assumption.
-  - apply (SC_and_elim H1). apply IHSC_proves; trivial.
-    rewrite H2; prove_subcontext.
-  - apply (SC_or_elim H1).
-    * apply IHSC_proves1; trivial. rewrite H2; prove_subcontext.
-    * apply IHSC_proves2; trivial. rewrite H2; prove_subcontext.
-  - apply (SC_impl_elim H1); trivial. apply IHSC_proves2; trivial.
-    rewrite H2; prove_subcontext.
+  - apply (SC_and_elim H0). apply IHSC_proves; trivial.
+    rewrite H1; prove_subcontext.
+  - apply (SC_or_elim H0).
+    * apply IHSC_proves1; trivial. rewrite H1; prove_subcontext.
+    * apply IHSC_proves2; trivial. rewrite H1; prove_subcontext.
+  - apply (SC_impl_elim H0); trivial. apply IHSC_proves2; trivial.
+    rewrite H1; prove_subcontext.
 + apply SC_bot_elim; assumption.
 + apply SC_top_intro.
 + apply SC_and_intro.
-  - apply H1; assumption.
-  - apply H3; assumption.
-+ remember (P0 ∧ Q) as S. pose proof H3; induction H3; try discriminate; subst.
-  - apply (SC_and_elim H3). apply H2; trivial.
+  - apply IHSC_proves1; assumption.
+  - apply IHSC_proves2; assumption.
++ remember (P0 ∧ Q) as S. pose proof H0; induction H0; try discriminate; subst.
+  - apply (SC_and_elim H0). apply IHSC_proves; trivial.
     * do 2 rewrite <- subcontext_cons_r. assumption.
-    * rewrite H4. prove_subcontext.
+    * rewrite H2. prove_subcontext.
   - apply SC_bot_elim. assumption.
   - injection HeqS; intros; subst.
-    eapply (H Q); trivial; [ constructor | idtac | reflexivity ].
-    eapply (H P0); [ constructor | idtac | idtac | reflexivity ].
-    * apply H2.
+    eapply (IHP Q); trivial; [ constructor | reflexivity | idtac ].
+    eapply (IHP P0); [ constructor | | reflexivity | ].
+    * rewrite <- subcontext_cons_r; assumption.
+    * apply IHSC_proves.
       { do 2 rewrite <- subcontext_cons_r. assumption. }
-      { rewrite H4. prove_subcontext. }
-    * rewrite <- subcontext_cons_r. assumption.
-  - apply (SC_and_elim H3). apply IHSC_proves; trivial.
-    rewrite H4. prove_subcontext.
-  - apply (SC_or_elim H3).
-    * apply IHSC_proves1; trivial. rewrite H4. prove_subcontext.
-    * apply IHSC_proves2; trivial. rewrite H4. prove_subcontext.
-  - apply (SC_impl_elim H3).
+      { rewrite H2. prove_subcontext. }
+  - apply (SC_and_elim H0). apply IHSC_proves0; trivial.
+    rewrite H2. prove_subcontext.
+  - apply (SC_or_elim H0).
+    * apply IHSC_proves1; trivial. rewrite H2. prove_subcontext.
+    * apply IHSC_proves2; trivial. rewrite H2. prove_subcontext.
+  - apply (SC_impl_elim H0).
     * assumption.
-    * apply IHSC_proves2; trivial. rewrite H4. prove_subcontext.
-+ apply (SC_and_elim H5). apply H2.
+    * apply IHSC_proves2; trivial. rewrite H2. prove_subcontext.
++ apply (SC_and_elim H3). apply IHSC_proves.
   - do 2 rewrite <- subcontext_cons_r. assumption.
-  - rewrite H4. prove_subcontext.
-+ apply SC_or_introl. apply H1; trivial.
-+ apply SC_or_intror. apply H1; trivial.
-+ remember (P0 ∨ Q) as S. pose proof H5; induction H5; try discriminate; subst.
-  - apply (SC_or_elim H5).
-    * apply H2; trivial.
+  - rewrite H2. prove_subcontext.
++ apply SC_or_introl. apply IHSC_proves; trivial.
++ apply SC_or_intror. apply IHSC_proves; trivial.
++ remember (P0 ∨ Q) as S. pose proof H0; induction H0; try discriminate; subst.
+  - apply (SC_or_elim H0).
+    * apply IHSC_proves1; trivial.
       { rewrite <- subcontext_cons_r. assumption. }
-      { rewrite H6. prove_subcontext. }
-    * apply H4; trivial.
+      { rewrite H1. prove_subcontext. }
+    * apply IHSC_proves2; trivial.
       { rewrite <- subcontext_cons_r. assumption. }
-      { rewrite H6. prove_subcontext. }
+      { rewrite H1. prove_subcontext. }
   - apply SC_bot_elim. assumption.
-  - apply (SC_and_elim H5). apply IHSC_proves; trivial.
-    rewrite H6. prove_subcontext.
+  - apply (SC_and_elim H0). apply IHSC_proves; trivial.
+    rewrite H1. prove_subcontext.
   - injection HeqS; intros; subst.
-    eapply (H P0); trivial; [ constructor | idtac | reflexivity ].
-    apply H2; trivial.
+    eapply (IHP P0); trivial; [ constructor | reflexivity | ].
+    apply IHSC_proves1; trivial.
     * rewrite <- subcontext_cons_r. assumption.
-    * rewrite H6. prove_subcontext.
+    * rewrite H1. prove_subcontext.
   - injection HeqS; intros; subst.
-    eapply (H Q); trivial; [ constructor | idtac | reflexivity ].
-    apply H4; trivial.
+    eapply (IHP Q); trivial; [ constructor | reflexivity | ].
+    apply IHSC_proves2; trivial.
     * rewrite <- subcontext_cons_r. assumption.
-    * rewrite H6. prove_subcontext.
-  - apply (SC_or_elim H5).
-    * apply IHSC_proves1; trivial. rewrite H6. prove_subcontext.
-    * apply IHSC_proves2; trivial. rewrite H6. prove_subcontext.
-  - apply (SC_impl_elim H5); trivial.
-    apply IHSC_proves2; trivial. rewrite H6. prove_subcontext.
-+ apply (SC_or_elim H7).
-  - apply H2.
+    * rewrite H1. prove_subcontext.
+  - apply (SC_or_elim H0).
+    * apply IHSC_proves3; trivial. rewrite H1. prove_subcontext.
+    * apply IHSC_proves4; trivial. rewrite H1. prove_subcontext.
+  - apply (SC_impl_elim H0); trivial.
+    apply IHSC_proves4; trivial. rewrite H1. prove_subcontext.
++ apply (SC_or_elim H2).
+  - apply IHSC_proves1.
     * rewrite <- subcontext_cons_r. assumption.
-    * rewrite H6. prove_subcontext.
-  - apply H4.
+    * rewrite H1. prove_subcontext.
+  - apply IHSC_proves2.
     * rewrite <- subcontext_cons_r. assumption.
-    * rewrite H6. prove_subcontext.
-+ apply SC_impl_intro. apply H1; trivial.
+    * rewrite H1. prove_subcontext.
++ apply SC_impl_intro. apply IHSC_proves; trivial.
   - rewrite <- subcontext_cons_r. assumption.
-  - rewrite H3. prove_subcontext.
-+ remember (P0 ⊃ Q) as S. pose proof H5; induction H5; try discriminate; subst.
-  - apply (SC_impl_elim H5).
-    * apply H2; trivial.
-    * apply H4.
+  - rewrite H0. prove_subcontext.
++ remember (P0 ⊃ Q) as S. pose proof H0; induction H0; try discriminate; subst.
+  - apply (SC_impl_elim H0).
+    * apply IHSC_proves1; trivial.
+    * apply IHSC_proves2.
       { rewrite <- subcontext_cons_r. assumption. }
-      { rewrite H6. prove_subcontext. }
+      { rewrite H1. prove_subcontext. }
   - apply SC_bot_elim; assumption.
-  - apply (SC_and_elim H5). apply IHSC_proves; trivial.
-    rewrite H6. prove_subcontext.
-  - apply (SC_or_elim H5).
-    * apply IHSC_proves1; trivial. rewrite H6. prove_subcontext.
-    * apply IHSC_proves2; trivial. rewrite H6. prove_subcontext.
+  - apply (SC_and_elim H0). apply IHSC_proves; trivial.
+    rewrite H1. prove_subcontext.
+  - apply (SC_or_elim H0).
+    * apply IHSC_proves3; trivial. rewrite H1. prove_subcontext.
+    * apply IHSC_proves4; trivial. rewrite H1. prove_subcontext.
   - injection HeqS; intros; subst. clear IHSC_proves.
-    eapply (H Q); [ constructor | | | reflexivity ].
-    * apply H4; trivial.
+    eapply (IHP Q); [ constructor | | reflexivity | ].
+    * eapply (IHP P0); [ constructor | | reflexivity | assumption ].
+      apply IHSC_proves1; trivial.
+    * apply IHSC_proves2; trivial.
       { rewrite <- subcontext_cons_r; assumption. }
-      { rewrite H6. prove_subcontext. }
-    * eapply (H P0); [ constructor | | | reflexivity ].
-      { assumption. }
-      { apply H2; trivial. }
-  - apply (SC_impl_elim H5); trivial. apply IHSC_proves2; trivial.
-    rewrite H6. prove_subcontext.
-+ apply (SC_impl_elim H7).
-  - apply H2; trivial.
-  - apply H4.
+      { rewrite H1. prove_subcontext. }
+  - apply (SC_impl_elim H0); trivial. apply IHSC_proves4; trivial.
+    rewrite H1. prove_subcontext.
++ apply (SC_impl_elim H2).
+  - apply IHSC_proves1; trivial.
+  - apply IHSC_proves2.
     * rewrite <- subcontext_cons_r. assumption.
-    * rewrite H6. prove_subcontext.
+    * rewrite H1. prove_subcontext.
 Qed.
 
 Theorem SC_admits_cut : forall Γ P Q,
