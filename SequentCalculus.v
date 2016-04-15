@@ -1,26 +1,13 @@
+Require Export PropLang.
+Require Import List.
+
 Section SequentCalculus.
 
-Variable atom : Type.
-
-Inductive prop : Type :=
-| atom_prop : atom -> prop
-| bot_prop : prop
-| top_prop : prop
-| and_prop : prop -> prop -> prop
-| or_prop : prop -> prop -> prop
-| impl_prop : prop -> prop -> prop.
-
-Notation "⊥" := bot_prop.
-Notation "⊤" := top_prop.
-Infix "∧" := and_prop (at level 51).
-Infix "∨" := or_prop (at level 52).
-Infix "⊃" := impl_prop (at level 53).
+Context {atom : Type}.
 
 Reserved Notation "Γ ⇒ P" (no associativity, at level 61).
 
-Require Import List.
-
-Inductive SC_proves : list prop -> prop -> Prop :=
+Inductive SC_proves : list (prop atom) -> prop atom -> Prop :=
 | SC_init {P Γ} : In P Γ -> Γ ⇒ P
 | SC_bot_elim {P Γ} : In ⊥ Γ -> Γ ⇒ P
 | SC_top_intro {Γ} : Γ ⇒ ⊤
@@ -35,7 +22,7 @@ Inductive SC_proves : list prop -> prop -> Prop :=
   Γ ⇒ R
 where "Γ ⇒ P" := (SC_proves Γ P).
 
-Definition subcontext (Γ₁ Γ₂ : list prop) : Prop :=
+Definition subcontext (Γ₁ Γ₂ : list (prop atom)) : Prop :=
 forall P, In P Γ₁ -> In P Γ₂.
 Infix "⊆" := subcontext (no associativity, at level 70).
 
@@ -64,7 +51,7 @@ Qed.
 
 Require Import Morphisms.
 Global Instance subcontext_cons_proper :
-  Proper (eq ==> subcontext ++> subcontext) (@cons prop).
+  Proper (eq ==> subcontext ++> subcontext) (@cons (prop atom)).
 Proof.
 intros P Q [] Γ₁ Γ₂ ?. rewrite subcontext_cons; split.
 + left; reflexivity.
@@ -100,7 +87,7 @@ induction H0; eauto using SC_proves.
   apply IHSC_proves2. f_equiv; assumption.
 Qed.
 
-Inductive subterm : prop -> prop -> Prop :=
+Inductive subterm : prop atom -> prop atom -> Prop :=
 | subterm_and_l {P Q} : subterm P (P ∧ Q)
 | subterm_and_r {P Q} : subterm Q (P ∧ Q)
 | subterm_or_l {P Q} : subterm P (P ∨ Q)
@@ -108,7 +95,7 @@ Inductive subterm : prop -> prop -> Prop :=
 | subterm_impl_l {P Q} : subterm P (P ⊃ Q)
 | subterm_impl_r {P Q} : subterm Q (P ⊃ Q).
 
-Lemma subterm_ind_scheme : forall (A : prop -> Prop),
+Lemma subterm_ind_scheme : forall (A : prop atom -> Prop),
   (forall P (IHP : forall P', subterm P' P -> A P'), A P) ->
   forall P, A P.
 Proof.
