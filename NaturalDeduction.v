@@ -1,12 +1,13 @@
-Require Import PropLang.
+Require Export PropLang.
+Require Export List.
+Require Export Morphisms.
+Require Export Subcontext.
 
 Section natural_deduction.
 
 Context {atom : Type}.
 
 Reserved Notation "Γ ⊢ P" (no associativity, at level 61).
-
-Require Import List.
 
 Inductive ND_proves : list (prop atom) -> prop atom -> Prop :=
 | ND_exfalso_quodlibet {Γ P} :
@@ -49,38 +50,25 @@ Inductive ND_proves : list (prop atom) -> prop atom -> Prop :=
   Γ ⊢ Q
 where "Γ ⊢ P" := (ND_proves Γ P).
 
-Lemma ND_context_extension {Gamma1 Gamma2 P} :
-Forall (fun x => In x Gamma2) Gamma1 -> ND_proves Gamma1 P ->
-ND_proves Gamma2 P.
+Global Instance ND_context_extension :
+Proper (subcontext ++> eq ==> Basics.impl) ND_proves.
 Proof.
-intros. revert Gamma2 H. induction H0; intros.
+intros Γ₁ Γ₂ ? P Q [] ?. revert Γ₂ H. induction H0; intros.
 + apply ND_exfalso_quodlibet. auto.
 + apply ND_True_intro.
 + apply ND_or_introl. auto.
 + apply ND_or_intror. auto.
-+ apply (ND_proof_by_cases (P := P) (Q := Q)); auto.
-  - apply IHND_proves2. constructor.
-    * left. reflexivity.
-    * apply Forall_impl with (2 := H). intros. right. assumption.
-  - apply IHND_proves3. constructor.
-    * left. reflexivity.
-    * apply Forall_impl with (2 := H). intros. right. assumption.
++ apply (ND_proof_by_cases (P := P) (Q := Q0)); auto.
+  - apply IHND_proves2. f_equiv. assumption.
+  - apply IHND_proves3. f_equiv. assumption.
 + apply ND_and_intro; auto.
-+ apply (ND_and_elim (P := P) (Q := Q)); auto.
-  apply IHND_proves2. constructor.
-  - left. reflexivity.
-  - constructor.
-    * right. left. reflexivity.
-    * apply Forall_impl with (2 := H). intros. right. right. assumption.
-+ apply ND_cond_proof. apply IHND_proves. constructor.
-  - left. reflexivity.
-  - apply Forall_impl with (2 := H). intros. right. assumption.
++ apply (ND_and_elim (P := P) (Q := Q0)); auto.
+  apply IHND_proves2. do 2 f_equiv; assumption.
++ apply ND_cond_proof. apply IHND_proves. f_equiv; assumption.
 + apply (ND_modus_ponens (P := P)); auto.
-+ apply ND_assumption. rewrite Forall_forall in H0. auto.
++ apply ND_assumption. auto.
 + apply (ND_cut (P := P)); auto.
-  apply IHND_proves2. constructor.
-  - left. reflexivity.
-  - apply Forall_impl with (2 := H). intros. right. assumption.
+  apply IHND_proves2. f_equiv. assumption.
 Qed.
 
 (* Want to prove: ND_prop forms a Heyting algebra *)
@@ -100,9 +88,7 @@ ND_prop_le P Q -> ND_prop_le Q R -> ND_prop_le P R.
 Proof.
 intros. apply (ND_cut (P := Q)).
 + assumption.
-+ apply ND_context_extension with (2 := H0). constructor.
-  - left. reflexivity.
-  - constructor.
++ refine (ND_context_extension _ _ _ _ _ eq_refl H0). prove_subcontext.
 Qed.
 
 Lemma ND_meet1 {P Q} : ND_prop_le (P ∧ Q) P.
@@ -142,12 +128,8 @@ ND_prop_le (P ∨ Q) R.
 Proof.
 intros. apply (ND_proof_by_cases (P := P) (Q := Q)).
 + apply ND_assumption. left. reflexivity.
-+ apply ND_context_extension with (2 := H). constructor.
-  - left. reflexivity.
-  - constructor.
-+ apply ND_context_extension with (2 := H0). constructor.
-  - left. reflexivity.
-  - constructor.
++ refine (ND_context_extension _ _ _ _ _ eq_refl H). prove_subcontext.
++ refine (ND_context_extension _ _ _ _ _ eq_refl H0). prove_subcontext.
 Qed.
 
 Lemma ND_False_min {P} : ND_prop_le ⊥ P.
@@ -168,17 +150,15 @@ split; intros.
 + apply (ND_and_elim (P := P) (Q := Q)).
   - apply ND_assumption. left. reflexivity.
   - apply (ND_modus_ponens (P := Q)).
-    * apply ND_context_extension with (2 := H). constructor.
-      { left. reflexivity. }
-      { constructor. }
-    * apply ND_assumption. right. left. reflexivity.
+    * refine (ND_context_extension _ _ _ _ _ eq_refl H).
+      prove_subcontext.
+    * apply ND_assumption. prove_In.
 + apply ND_cond_proof. apply (ND_cut (P := P ∧ Q)).
   - apply ND_and_intro.
     * apply ND_assumption. right. left. reflexivity.
     * apply ND_assumption. left. reflexivity.
-  - apply ND_context_extension with (2 := H). constructor.
-    * left. reflexivity.
-    * constructor.
+  - refine (ND_context_extension _ _ _ _ _ eq_refl H).
+    prove_subcontext.
 Qed.
 
 Section ND_free_Heyting_algebra.
