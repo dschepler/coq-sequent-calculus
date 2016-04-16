@@ -5,7 +5,7 @@ Require Import Subcontext.
 
 Lemma ND_SC_equiv {atom:Type} :
   forall (Γ : list (prop atom)) (P : prop atom),
-  ND_proves Γ P <-> SC_proves Γ P.
+  Γ ⊢ P <-> Γ ⇒ P.
 Proof.
 split; intros.
 + induction H.

@@ -178,3 +178,5 @@ intros. eapply SC_admits_cut_ext; (eassumption || reflexivity).
 Qed.
 
 End SequentCalculus.
+
+Infix "⇒" := SC_proves (no associativity, at level 61).

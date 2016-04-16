@@ -233,3 +233,5 @@ Qed.
 End ND_free_Heyting_algebra.
 
 End natural_deduction.
+
+Infix "⊢" := ND_proves (no associativity, at level 61).
