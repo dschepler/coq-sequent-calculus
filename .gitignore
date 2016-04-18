@@ -3,3 +3,4 @@ Makefile
 *.glob
 *.v.d
 *.vo
+html
