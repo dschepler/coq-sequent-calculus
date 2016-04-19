@@ -422,6 +422,192 @@ assert (context_cost_equiv (nth_tail (prop_cost P) (context_cost (Γ'' ++ Γ')))
 Qed.
 
 
+Instance add_cost_to_list_incr_l :
+  Proper (lt ++> context_cost_equiv ==> context_cost_lt) add_cost_to_list.
+Proof.
+intros m n ? l1 l2 ?. rewrite H0. clear l1 H0.
+revert n H l2; induction m; destruct n, l2; intros; simpl;
+try match goal with
+| H : _ < 0 |- _ => inversion H
+end.
++ apply context_cost_lt_later. apply add_cost_to_list_lt.
++ apply context_cost_lt_later. apply add_cost_to_list_lt.
++ apply context_cost_lt_later. apply IHm. auto with arith.
++ apply context_cost_lt_later. apply IHm. auto with arith.
+Qed.
+
+(* Now, for a series of results that each subgoal in an LJT* rule
+   reduces the cost *)
+Lemma context_cost_lt_cons_l {Γ P Q} :
+  prop_cost P < prop_cost Q ->
+  context_cost_lt (context_cost (P :: Γ)) (context_cost (Q :: Γ)).
+Proof.
+intros. simpl. apply add_cost_to_list_incr_l; trivial. reflexivity.
+Qed.
+
+Lemma context_cost_lt_cons_r {Γ Γ' P} :
+  context_cost_lt (context_cost Γ) (context_cost Γ') ->
+  context_cost_lt (context_cost (P :: Γ)) (context_cost (P :: Γ')).
+Proof.
+intros. simpl. apply add_cost_to_list_incr; trivial.
+Qed.
+
+Proposition LJTstar_and_intro_cost1 {Γ P Q} :
+  context_cost_lt (context_cost (P :: Γ)) (context_cost (P ∧ Q :: Γ)).
+Proof.
+apply context_cost_lt_cons_l. simpl. eauto with arith.
+Qed.
+
+Proposition LJTstar_and_intro_cost2 {Γ P Q} :
+  context_cost_lt (context_cost (Q :: Γ)) (context_cost (P ∧ Q :: Γ)).
+Proof.
+apply context_cost_lt_cons_l. simpl. eauto with arith.
+Qed.
+
+Proposition LJTstar_and_elim_cost {Γ P Q R Γ'} :
+  remove (P ∧ Q) Γ Γ' ->
+  context_cost_lt (context_cost (R :: P :: Q :: Γ'))
+    (context_cost (R :: Γ)).
+Proof.
+intros. apply context_cost_lt_cons_r.
+apply reduce_context_cost_lt with (1 := H) (Γ'' := P :: Q :: nil).
+intros; repeat match goal with
+| H : In _ (_ :: _) |- _ => destruct H; subst
+| H : In _ nil |- _ => destruct H
+end; simpl; eauto with arith.
+Qed.
+
+Proposition LJTstar_or_introl_cost {Γ P Q} :
+  context_cost_lt (context_cost (P :: Γ))
+    (context_cost (P ∨ Q :: Γ)).
+Proof.
+apply context_cost_lt_cons_l. simpl; eauto with arith.
+Qed.
+
+Proposition LJTstar_or_intror_cost {Γ P Q} :
+  context_cost_lt (context_cost (Q :: Γ))
+    (context_cost (P ∨ Q :: Γ)).
+Proof.
+apply context_cost_lt_cons_l. simpl; eauto with arith.
+Qed.
+
+Proposition LJTstar_or_elim_cost1 {Γ P Q R Γ'} :
+  remove (P ∨ Q) Γ Γ' -> context_cost_lt
+    (context_cost (R :: P :: Γ'))
+    (context_cost (R :: Γ)).
+Proof.
+intros. apply context_cost_lt_cons_r.
+apply reduce_context_cost_lt with (1 := H) (Γ'' := P :: nil).
+intros; repeat match goal with
+| H : In _ (_ :: _) |- _ => destruct H; subst
+| H : In _ nil |- _ => destruct H
+end; simpl; eauto with arith.
+Qed.
+
+Proposition LJTstar_or_elim_cost2 {Γ P Q R Γ'} :
+  remove (P ∨ Q) Γ Γ' -> context_cost_lt
+    (context_cost (R :: Q :: Γ'))
+    (context_cost (R :: Γ)).
+Proof.
+intros. apply context_cost_lt_cons_r.
+apply reduce_context_cost_lt with (1 := H) (Γ'' := Q :: nil).
+intros; repeat match goal with
+| H : In _ (_ :: _) |- _ => destruct H; subst
+| H : In _ nil |- _ => destruct H
+end; simpl; eauto with arith.
+Qed.
+
+Proposition LJTstar_impl_intro_cost {Γ P Q} :
+  context_cost_lt (context_cost (Q :: P :: Γ))
+    (context_cost (P ⊃ Q :: Γ)).
+Proof.
+assert (remove (P ⊃ Q) (P ⊃ Q :: Γ) Γ) by eauto using remove.
+apply reduce_context_cost_lt with (1 := H) (Γ'' := Q :: P :: nil).
+intros; repeat match goal with
+| H : In _ (_ :: _) |- _ => destruct H; subst
+| H : In _ nil |- _ => destruct H
+end; simpl; eauto with arith.
+Qed.
+
+Proposition LJTstar_impl_assump_elim_cost {Γ P Q R Γ'} :
+  remove (P ⊃ Q) Γ Γ' -> context_cost_lt
+    (context_cost (R :: Q :: Γ'))
+    (context_cost (R :: Γ)).
+Proof.
+intros. apply context_cost_lt_cons_r.
+apply reduce_context_cost_lt with (1 := H) (Γ'' := Q :: nil).
+intros; repeat match goal with
+| H : In _ (_ :: _) |- _ => destruct H; subst
+| H : In _ nil |- _ => destruct H
+end; simpl; eauto with arith.
+Qed.
+
+Proposition LJTstar_red_top_impl_cost {Γ P Q Γ'} :
+  remove (⊤ ⊃ P) Γ Γ' -> context_cost_lt
+    (context_cost (Q :: P :: Γ'))
+    (context_cost (Q :: Γ)).
+Proof.
+intros. apply context_cost_lt_cons_r.
+apply reduce_context_cost_lt with (1 := H) (Γ'' := P :: nil).
+intros; repeat match goal with
+| H : In _ (_ :: _) |- _ => destruct H; subst
+| H : In _ nil |- _ => destruct H
+end; simpl; eauto with arith.
+Qed.
+
+Proposition LJTstar_red_and_impl_cost {Γ P Q R S Γ'} :
+  remove (P ∧ Q ⊃ R) Γ Γ' -> context_cost_lt
+    (context_cost (S :: P ⊃ Q ⊃ R :: Γ'))
+    (context_cost (S :: Γ)).
+Proof.
+intros. apply context_cost_lt_cons_r.
+apply reduce_context_cost_lt with (1 := H) (Γ'' := P ⊃ Q ⊃ R :: nil).
+intros; repeat match goal with
+| H : In _ (_ :: _) |- _ => destruct H; subst
+| H : In _ nil |- _ => destruct H
+end; simpl. repeat rewrite <- plus_n_Sm. rewrite plus_assoc. eauto with arith.
+Qed.
+
+Proposition LJTstar_red_or_impl_cost {Γ P Q R S Γ'} :
+  remove (P ∨ Q ⊃ R) Γ Γ' -> context_cost_lt
+    (context_cost (S :: P ⊃ R :: Q ⊃ R :: Γ'))
+    (context_cost (S :: Γ)).
+Proof.
+intros. apply context_cost_lt_cons_r.
+apply reduce_context_cost_lt with (1 := H) (Γ'' := P ⊃ R :: Q ⊃ R :: nil).
+intros; repeat match goal with
+| H : In _ (_ :: _) |- _ => destruct H; subst
+| H : In _ nil |- _ => destruct H
+end; simpl; eauto with arith.
+Qed.
+
+Proposition LJTstar_impl_impl_elim_cost1 {Γ P Q R S Γ'} :
+  remove ((P ⊃ Q) ⊃ R) Γ Γ' -> context_cost_lt
+    (context_cost (Q :: P :: Q ⊃ R :: Γ'))
+    (context_cost (S :: Γ)).
+Proof.
+intros. simpl context_cost at 2. rewrite <- add_cost_to_list_lt.
+apply reduce_context_cost_lt with (1 := H) (Γ'' := Q :: P :: Q ⊃ R :: nil).
+intros; repeat match goal with
+| H : In _ (_ :: _) |- _ => destruct H; subst
+| H : In _ nil |- _ => destruct H
+end; simpl; eauto with arith.
+Qed.
+
+Proposition LJTstar_impl_impl_elim_cost2 {Γ P Q R S Γ'} :
+  remove ((P ⊃ Q) ⊃ R) Γ Γ' -> context_cost_lt
+    (context_cost (S :: R :: Γ'))
+    (context_cost (S :: Γ)).
+Proof.
+intros. apply context_cost_lt_cons_r.
+apply reduce_context_cost_lt with (1 := H) (Γ'' := R :: nil).
+intros; repeat match goal with
+| H : In _ (_ :: _) |- _ => destruct H; subst
+| H : In _ nil |- _ => destruct H
+end; simpl; eauto with arith.
+Qed.
+
+
 Theorem LJTstar_completeness :
   forall Γ P, Γ ⊢ P -> Γ ⇒* P.
 Proof.
@@ -436,33 +622,34 @@ destruct H1.
 + apply LJTstar_bot_elim. assumption.
 + apply LJTstar_top_intro.
 + apply LJTstar_and_intro.
-  - apply H2; trivial. admit.
-  - apply H2; trivial. admit.
+  - apply H2; trivial. apply LJTstar_and_intro_cost1.
+  - apply H2; trivial. apply LJTstar_and_intro_cost2.
 + rewrite In_ex_remove in H. destruct H as [Γ'].
   apply (LJTstar_and_elim H). apply H2.
-  - admit.
+  - eauto using LJTstar_and_elim_cost.
   - apply @SC_admits_cut with (P := P ∧ Q).
     * apply SC_and_intro; apply SC_init; prove_In.
     * rewrite (remove_subcontext_rev _ _ _ H) in H1.
       refine (SC_context_extension _ _ _ _ _ eq_refl H1).
       prove_subcontext.
-+ apply LJTstar_or_introl. apply H2; trivial. admit.
-+ apply LJTstar_or_intror. apply H2; trivial. admit.
++ apply LJTstar_or_introl. apply H2; trivial. apply LJTstar_or_introl_cost.
++ apply LJTstar_or_intror. apply H2; trivial. apply LJTstar_or_intror_cost.
 + rewrite In_ex_remove in H. destruct H as [Γ'].
   apply (LJTstar_or_elim H); apply H2.
-  - admit.
+  - eauto using LJTstar_or_elim_cost1.
   - apply @SC_admits_cut with (P := P ∨ Q).
     * apply SC_or_introl; apply SC_init; prove_In.
     * rewrite (remove_subcontext_rev _ _ _ H) in H1_.
       refine (SC_context_extension _ _ _ _ _ eq_refl H1_).
       prove_subcontext.
-  - admit.
+  - eauto using LJTstar_or_elim_cost2.
   - apply @SC_admits_cut with (P := P ∨ Q).
     * apply SC_or_intror; apply SC_init; prove_In.
     * rewrite (remove_subcontext_rev _ _ _ H) in H1_0.
       refine (SC_context_extension _ _ _ _ _ eq_refl H1_0).
       prove_subcontext.
-+ apply LJTstar_impl_intro. apply H2; trivial. admit.
++ apply LJTstar_impl_intro. apply H2; trivial.
+  apply LJTstar_impl_intro_cost.
 + revert Q R H H1_0 H2; induction H1_; intros Q0 R0 H' H1_0' H2;
   rewrite In_ex_remove in H'; destruct H' as [Γ'].
   - apply (LJTstar_impl_assump_elim H0).
@@ -471,7 +658,7 @@ destruct H1.
       clear H0 H1_0' H1; revert Q0; induction P; try discriminate.
       unfold not; injection 1; intros. contradiction (IHP1 P2).
     * apply H2.
-      { admit. }
+      { eauto using LJTstar_impl_assump_elim_cost. }
       { apply @SC_admits_cut with (P := P ⊃ Q0).
         + apply SC_impl_intro. apply SC_init; prove_In.
         + rewrite (remove_subcontext_rev _ _ _ H0) in H1_0'.
@@ -479,14 +666,14 @@ destruct H1.
           prove_subcontext. }
   - apply LJTstar_bot_elim; assumption.
   - apply (LJTstar_red_top_impl H). apply H2.
-    * admit.
+    * eauto using LJTstar_red_top_impl_cost.
     * apply @SC_admits_cut with (P := ⊤ ⊃ Q0).
       { apply SC_impl_intro; apply SC_init; prove_In. }
       { rewrite (remove_subcontext_rev _ _ _ H) in H1_0'.
         refine (SC_context_extension _ _ _ _ _ eq_refl H1_0').
         prove_subcontext. }
   - apply (LJTstar_red_and_impl H). apply H2.
-    * admit.
+    * eauto using LJTstar_red_and_impl_cost.
     * apply @SC_admits_cut with (P := P ∧ Q ⊃ Q0).
       { apply SC_impl_intro.
         apply @SC_and_elim with (P := P) (Q := Q); try prove_In.
@@ -506,7 +693,7 @@ destruct H1.
       }
   - rewrite In_ex_remove in H. destruct H as [Γ''].
     apply (LJTstar_and_elim H). apply H2.
-    * admit.
+    * eauto using LJTstar_and_elim_cost.
     * apply @SC_admits_cut with (P := R).
       { apply @SC_admits_cut with (P := P ∧ Q).
         + apply SC_and_intro; apply SC_init; prove_In.
@@ -526,7 +713,7 @@ destruct H1.
             refine (SC_context_extension _ _ _ _ _ eq_refl H1_0').
             prove_subcontext. }
   - apply (LJTstar_red_or_impl H). apply H2.
-    * admit.
+    * eauto using LJTstar_red_or_impl_cost.
     * apply @SC_admits_cut with (P := P ∨ Q ⊃ Q0).
       { apply SC_impl_intro.
         apply @SC_or_elim with (P := P) (Q := Q); try prove_In.
@@ -545,7 +732,7 @@ destruct H1.
           refine (SC_context_extension _ _ _ _ _ eq_refl H0).
           prove_subcontext. }
   - apply (LJTstar_red_or_impl H). apply H2.
-    * admit.
+    * eauto using LJTstar_red_or_impl_cost.
     * apply @SC_admits_cut with (P := P ∨ Q ⊃ Q0).
       { apply SC_impl_intro.
         apply @SC_or_elim with (P := P) (Q := Q); try prove_In.
@@ -565,7 +752,7 @@ destruct H1.
           prove_subcontext. }
   - rewrite In_ex_remove in H. destruct H as [Γ''].
     apply (LJTstar_or_elim H); apply H2.
-    * admit.
+    * eauto using LJTstar_or_elim_cost1.
     * apply @SC_admits_cut with (P := R).
       { apply @SC_admits_cut with (P := P ∨ Q).
         + apply SC_or_introl; apply SC_init; prove_In.
@@ -582,7 +769,7 @@ destruct H1.
           - rewrite (remove_subcontext_rev _ _ _ H) in H1_0'.
             refine (SC_context_extension _ _ _ _ _ eq_refl H1_0').
             prove_subcontext. }
-    * admit.
+    * eauto using LJTstar_or_elim_cost2.
     * apply @SC_admits_cut with (P := R).
       { apply @SC_admits_cut with (P := P ∨ Q).
         + apply SC_or_intror; apply SC_init; prove_In.
@@ -601,7 +788,7 @@ destruct H1.
             prove_subcontext. }
   - apply (LJTstar_impl_impl_elim H).
     * apply H2.
-      { admit. }
+      { eauto using LJTstar_impl_impl_elim_cost1. }
       { apply @SC_admits_cut with (P := (P ⊃ Q) ⊃ Q0).
         + apply SC_impl_intro.
           apply @SC_impl_elim with (P := P) (Q := Q);
@@ -612,7 +799,7 @@ destruct H1.
           refine (SC_context_extension _ _ _ _ _ eq_refl H1_).
           prove_subcontext. }
     * apply H2.
-      { admit. }
+      { eauto using LJTstar_impl_impl_elim_cost2. }
       { apply @SC_admits_cut with (P := (P ⊃ Q) ⊃ Q0).
         + apply SC_impl_intro. apply SC_init; prove_In.
         + rewrite (remove_subcontext_rev _ _ _ H) in H1_0'.
@@ -626,7 +813,7 @@ destruct H1.
       { apply SC_init; prove_In. }
       { refine (SC_context_extension _ _ _ _ _ eq_refl H1_0').
         prove_subcontext. }
-Admitted.
+Qed.
 
 Theorem ND_LJTstar_equiv : forall Γ P,
   Γ ⊢ P <-> Γ ⇒* P.
