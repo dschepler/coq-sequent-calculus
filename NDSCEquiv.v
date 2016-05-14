@@ -57,3 +57,8 @@ split; intros.
       { assumption. }
     * assumption.
 Qed.
+
+Corollary ND_consistent {atom : Type} : ~ (nil ⊢ @bot_prop atom).
+Proof.
+rewrite ND_SC_equiv. apply SC_consistent.
+Qed.

@@ -23,6 +23,13 @@ Inductive SC_proves : list (prop atom) -> prop atom -> Prop :=
   Γ ⇒ R
 where "Γ ⇒ P" := (SC_proves Γ P).
 
+Proposition SC_consistent : ~ (nil ⇒ ⊥).
+Proof.
+intro. inversion H; repeat match goal with
+       | H0 : In _ nil |- _ => destruct H0
+       end.
+Qed.
+
 Global Instance SC_context_extension :
   Proper (subcontext ++> eq ==> Basics.impl) SC_proves.
 Proof.

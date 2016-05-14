@@ -1,5 +1,6 @@
 Require Export NaturalDeduction.
 Require Import Subcontext.
+Require Import NDSCEquiv.
 
 Section Classical_ND.
 
@@ -198,6 +199,14 @@ split; intros.
     * apply @ND_cond_proof. apply @ND_assumption; prove_In. 
 + apply @classic_ND_modus_ponens with (P := ¬ (¬ P));
   auto using @ND_impl_classic_ND, @classic_ND_NNPP.
+Qed.
+
+Corollary classic_ND_consistent : ~ (nil ⊢c ⊥).
+Proof.
+rewrite classic_ND_equiv. intro. eapply @ND_consistent.
+eapply @ND_modus_ponens with (P := ¬ ⊥).
++ eassumption.
++ apply @ND_cond_proof. apply @ND_assumption; prove_In.
 Qed.
 
 End Classical_ND.
